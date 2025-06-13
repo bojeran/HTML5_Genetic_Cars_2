@@ -35,7 +35,7 @@ module.exports = {
     return Object.keys(schema).reduce(function(clone, key){
       var schemaProp = schema[key];
       var values;
-      console.log(key, parent[key]);
+      // Debug: console.log(key, parent[key]);
       switch(schemaProp.type){
         case "shuffle" : values = random.mutateShuffle(
           schemaProp, generator, parent[key], factor

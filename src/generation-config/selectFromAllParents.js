@@ -29,7 +29,7 @@ function selectFromAllParents(parents, parentList, previousParentIndex) {
       })
     }
     var iCo = getInbreedingCoefficient(child);
-    console.log("inbreeding coefficient", iCo)
+    // Debug: console.log("inbreeding coefficient", iCo)
     if(iCo > 0.25){
       return false;
     }
