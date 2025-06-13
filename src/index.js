@@ -14,6 +14,7 @@ var graph_fns = require("./draw/plot-graphs.js");
 var plot_graphs = graph_fns.plotGraphs;
 var cw_clearGraphics = graph_fns.clearGraphics;
 var cw_drawFloor = require("./draw/draw-floor.js");
+var cw_drawWater = require("./draw/draw-water.js");
 
 var ghost_draw_frame = ghost_fns.ghost_draw_frame;
 var ghost_create_ghost = ghost_fns.ghost_create_ghost;
@@ -164,6 +165,7 @@ function resetCarUI(){
 
 function cw_drawScreen() {
   var floorTiles = currentRunner.scene.floorTiles;
+  var waterZones = currentRunner.scene.waterZones;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.save();
   cw_setCameraPosition();
@@ -173,6 +175,7 @@ function cw_drawScreen() {
   ctx.translate(200 - (camera_x * zoom), 200 + (camera_y * zoom));
   ctx.scale(zoom, -zoom);
   cw_drawFloor(ctx, camera, floorTiles);
+  cw_drawWater(ctx, camera, waterZones);
   ghost_draw_frame(ctx, ghost, camera);
   cw_drawCars();
   ctx.restore();
@@ -205,6 +208,7 @@ function cw_setCameraPosition() {
 
 function cw_drawGhostReplay() {
   var floorTiles = currentRunner.scene.floorTiles;
+  var waterZones = currentRunner.scene.waterZones;
   var carPosition = ghost_get_position(ghost);
   camera.pos.x = carPosition.x;
   camera.pos.y = carPosition.y;
@@ -220,9 +224,10 @@ function cw_drawGhostReplay() {
     200 + (carPosition.y * camera.zoom)
   );
   ctx.scale(camera.zoom, -camera.zoom);
+  cw_drawFloor(ctx, camera, floorTiles);
+  cw_drawWater(ctx, camera, waterZones);
   ghost_draw_frame(ctx, ghost);
   ghost_move_frame(ghost);
-  cw_drawFloor(ctx, camera, floorTiles);
   ctx.restore();
 }
 

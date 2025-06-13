@@ -1,4 +1,4 @@
-
+var waterPhysics = require("../world/water-physics");
 
 module.exports = {
   getInitialState: getInitialState,
@@ -14,6 +14,7 @@ function getInitialState(world_def){
     maxPositiony: 0,
     minPositiony: 0,
     maxPositionx: 0,
+    framesInWater: 0,
   };
 }
 
@@ -42,9 +43,28 @@ function updateState(constants, worldConstruct, state){
 
   if (position.x > state.maxPositionx + 0.02) {
     nextState.health = constants.max_car_health;
+    nextState.framesInWater = 0;
     return nextState;
   }
-  nextState.health = state.health - 1;
+  
+  // Check if car is in water
+  var carIndex = worldConstruct.carIndex || 0; // Need to pass car index from world/run.js
+  var isInWater = waterPhysics.isInWater(carIndex);
+  
+  if (isInWater) {
+    nextState.framesInWater = state.framesInWater + 1;
+    // Lose health slightly faster in water, but not too much
+    nextState.health = state.health - 2; // Reduced from -3 to -2
+    
+    // Extra penalty for being stuck in water too long (but only after longer time)
+    if (nextState.framesInWater > 180) { // More than 3 seconds at 60fps (was 1 second)
+      nextState.health -= 1; // Reduced from -2 to -1
+    }
+  } else {
+    nextState.framesInWater = 0;
+    nextState.health = state.health - 1;
+  }
+  
   if (Math.abs(worldConstruct.chassis.GetLinearVelocity().x) < 0.001) {
     nextState.health -= 5;
   }
@@ -68,6 +88,12 @@ function calculateScore(state, constants){
   var avgspeed = (state.maxPositionx / state.frames) * constants.box2dfps;
   var position = state.maxPositionx;
   var score = position + avgspeed;
+  
+  // Bonus for successfully crossing water (spent time in water but didn't die)
+  if (state.framesInWater > 0 && state.health > 0) {
+    score += 5; // Small bonus for water survival
+  }
+  
   return {
     v: score,
     s: avgspeed,

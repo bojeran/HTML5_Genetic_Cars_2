@@ -1,5 +1,7 @@
 /* globals b2World b2Vec2 b2BodyDef b2FixtureDef b2PolygonShape */
 
+var waterPhysics = require("./water-physics");
+
 /*
 
 world_def = {
@@ -16,7 +18,11 @@ world_def = {
 module.exports = function(world_def){
 
   var world = new b2World(world_def.gravity, world_def.doSleep);
-  var floorTiles = cw_createFloor(
+  
+  // Clear any existing water zones
+  waterPhysics.clearWaterZones();
+  
+  var floorData = cw_createFloor(
     world,
     world_def.floorseed,
     world_def.tileDimensions,
@@ -24,8 +30,8 @@ module.exports = function(world_def){
     world_def.mutable_floor
   );
 
-  var last_tile = floorTiles[
-    floorTiles.length - 1
+  var last_tile = floorData.floorTiles[
+    floorData.floorTiles.length - 1
   ];
   var last_fixture = last_tile.GetFixtureList();
   var tile_position = last_tile.GetWorldPoint(
@@ -34,7 +40,8 @@ module.exports = function(world_def){
   world.finishLine = tile_position.x;
   return {
     world: world,
-    floorTiles: floorTiles,
+    floorTiles: floorData.floorTiles,
+    waterZones: floorData.waterZones,
     finishLine: tile_position.x
   };
 }
@@ -43,24 +50,75 @@ function cw_createFloor(world, floorseed, dimensions, maxFloorTiles, mutable_flo
   var last_tile = null;
   var tile_position = new b2Vec2(-5, 0);
   var cw_floorTiles = [];
+  var waterZones = [];
+  var waterProbability = 0.25; // 25% chance of water per segment
+  var minDistanceBetweenWater = 8; // Minimum tiles between water zones
+  var lastWaterIndex = -minDistanceBetweenWater;
+  
   Math.seedrandom(floorseed);
-  for (var k = 0; k < maxFloorTiles; k++) {
-    if (!mutable_floor) {
-      // keep old impossible tracks if not using mutable floors
-      last_tile = cw_createFloorTile(
-        world, dimensions, tile_position, (Math.random() * 3 - 1.5) * 1.5 * k / maxFloorTiles
-      );
-    } else {
-      // if path is mutable over races, create smoother tracks
-      last_tile = cw_createFloorTile(
-        world, dimensions, tile_position, (Math.random() * 3 - 1.5) * 1.2 * k / maxFloorTiles
-      );
+  
+  var k = 0;
+  while (k < maxFloorTiles) {
+    // Check if we should create water here
+    var createWater = false;
+    if (k > 10 && k < maxFloorTiles - 20) { // Don't put water too early or late
+      if (k - lastWaterIndex >= minDistanceBetweenWater) {
+        createWater = Math.random() < waterProbability;
+      }
     }
-    cw_floorTiles.push(last_tile);
-    var last_fixture = last_tile.GetFixtureList();
-    tile_position = last_tile.GetWorldPoint(last_fixture.GetShape().m_vertices[3]);
+    
+    if (createWater) {
+      // Create a gap for water
+      var waterWidth = 2 + Math.random() * 2; // 2-4 tiles wide
+      var waterDepth = 2.5 + Math.random() * 1.0; // 2.5-3.5 units deep
+      
+      // Ensure we don't exceed maxFloorTiles
+      var tilesForWater = Math.floor(waterWidth);
+      if (k + tilesForWater >= maxFloorTiles) {
+        createWater = false;
+      }
+    }
+    
+    if (createWater) {
+      // Create water zone at current position
+      var waterZone = waterPhysics.createWaterZone(
+        world,
+        new b2Vec2(tile_position.x, tile_position.y - 0.5), // Below ground level
+        waterWidth * dimensions.x,
+        waterDepth
+      );
+      waterZones.push(waterZone);
+      
+      // Move position past the water
+      tile_position.x += waterWidth * dimensions.x;
+      lastWaterIndex = k;
+      
+      // Skip tiles to account for water width
+      k += tilesForWater;
+    } else {
+      // Create normal floor tile
+      if (!mutable_floor) {
+        // keep old impossible tracks if not using mutable floors
+        last_tile = cw_createFloorTile(
+          world, dimensions, tile_position, (Math.random() * 3 - 1.5) * 1.5 * k / maxFloorTiles
+        );
+      } else {
+        // if path is mutable over races, create smoother tracks
+        last_tile = cw_createFloorTile(
+          world, dimensions, tile_position, (Math.random() * 3 - 1.5) * 1.2 * k / maxFloorTiles
+        );
+      }
+      cw_floorTiles.push(last_tile);
+      var last_fixture = last_tile.GetFixtureList();
+      tile_position = last_tile.GetWorldPoint(last_fixture.GetShape().m_vertices[3]);
+      k++;
+    }
   }
-  return cw_floorTiles;
+  
+  return {
+    floorTiles: cw_floorTiles,
+    waterZones: waterZones
+  };
 }
 
 
