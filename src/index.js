@@ -90,6 +90,7 @@ var world_def = {
   tileDimensions: new b2Vec2(1.5, 0.15),
   maxFloorTiles: 200,
   mutable_floor: false,
+  waterEnabled: true,
   box2dfps: box2dfps,
   motorSpeed: 20,
   max_car_health: max_car_health,
@@ -602,6 +603,19 @@ function cw_init() {
       wheelSelect.value = wheelCount;
     }
   }
+  // Check for stored water setting and apply it
+  var storedWater = localStorage.getItem('waterEnabled');
+  if (storedWater) {
+    logger.log(logger.LOG_LEVELS.DEBUG, "Restoring water setting from localStorage:", storedWater);
+    world_def.waterEnabled = (storedWater === "enabled");
+    
+    // Update the select element to match
+    var waterSelect = document.querySelector('#water');
+    if (waterSelect) {
+      waterSelect.value = storedWater;
+    }
+  }
+  
   // clone silver dot and health bar
   var mmm = document.getElementsByName('minimapmarker')[0];
   var hbar = document.getElementsByName('healthbar')[0];
@@ -712,6 +726,10 @@ document.querySelector("#wheelcount").addEventListener("change", function(e){
   var elem = e.target
   cw_setWheelCount(elem.options[elem.selectedIndex].value)
 })
+document.querySelector("#water").addEventListener("change", function(e){
+  var elem = e.target
+  cw_setWater(elem.options[elem.selectedIndex].value)
+})
 
 function cw_setMutation(mutation) {
   generationConfig.constants.gen_mutation = parseFloat(mutation);
@@ -736,6 +754,17 @@ function cw_setGravity(choice) {
 
 function cw_setEliteSize(clones) {
   generationConfig.constants.championLength = parseInt(clones, 10);
+}
+function cw_setWater(state) {
+  var waterEnabled = (state === "enabled");
+  logger.log(logger.LOG_LEVELS.DEBUG, "Changing water setting to:", waterEnabled ? "enabled" : "disabled");
+  
+  world_def.waterEnabled = waterEnabled;
+  
+  // Store water setting in localStorage for persistence
+  localStorage.setItem('waterEnabled', state);
+  
+  logger.log(logger.LOG_LEVELS.DEBUG, "Water setting will take effect on next generation");
 }
 
 function cw_setWheelCount(wheelCount) {
