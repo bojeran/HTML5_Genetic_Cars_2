@@ -581,6 +581,27 @@ function cw_toggleGhostReplay(button) {
 
 // initial stuff, only called once (hopefully)
 function cw_init() {
+  // Check for stored wheel count and apply it
+  var storedWheelCount = localStorage.getItem('wheelCount');
+  if (storedWheelCount) {
+    var wheelCount = parseInt(storedWheelCount, 10);
+    logger.log(logger.LOG_LEVELS.DEBUG, "Restoring wheel count from localStorage:", wheelCount);
+    
+    // Update car constants
+    var currentConstants = carConstruct.carConstants();
+    currentConstants.wheelCount = wheelCount;
+    
+    // Regenerate schema
+    var newSchema = carConstruct.generateSchema(currentConstants);
+    generationConfig.constants.schema = newSchema;
+    world_def.schema = newSchema;
+    
+    // Update the select element to match
+    var wheelSelect = document.querySelector('#wheelcount');
+    if (wheelSelect) {
+      wheelSelect.value = wheelCount;
+    }
+  }
   // clone silver dot and health bar
   var mmm = document.getElementsByName('minimapmarker')[0];
   var hbar = document.getElementsByName('healthbar')[0];
@@ -687,6 +708,11 @@ document.querySelector("#elitesize").addEventListener("change", function(e){
   cw_setEliteSize(elem.options[elem.selectedIndex].value)
 })
 
+document.querySelector("#wheelcount").addEventListener("change", function(e){
+  var elem = e.target
+  cw_setWheelCount(elem.options[elem.selectedIndex].value)
+})
+
 function cw_setMutation(mutation) {
   generationConfig.constants.gen_mutation = parseFloat(mutation);
 }
@@ -710,6 +736,27 @@ function cw_setGravity(choice) {
 
 function cw_setEliteSize(clones) {
   generationConfig.constants.championLength = parseInt(clones, 10);
+}
+
+function cw_setWheelCount(wheelCount) {
+  var newWheelCount = parseInt(wheelCount, 10);
+  logger.log(logger.LOG_LEVELS.DEBUG, "Changing wheel count to:", newWheelCount);
+  
+  // Store the wheel count in localStorage to persist across reloads
+  localStorage.setItem('wheelCount', newWheelCount);
+  
+  // Update the car constants  
+  var currentConstants = carConstruct.carConstants();
+  currentConstants.wheelCount = newWheelCount;
+  
+  // Regenerate schema with new wheel count
+  var newSchema = carConstruct.generateSchema(currentConstants);
+  generationConfig.constants.schema = newSchema;
+  world_def.schema = newSchema;
+  
+  // Simple restart: reload the page to avoid any schema conflicts
+  logger.log(logger.LOG_LEVELS.DEBUG, "Reloading page to apply wheel count change...");
+  window.location.reload();
 }
 // Dark mode functionality
 function toggleTheme() {
