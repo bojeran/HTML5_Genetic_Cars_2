@@ -3,27 +3,34 @@
 */
 
 var createInstance = require("../machine-learning/create-instance");
+var logger = require("../logger/logger");
 
 module.exports = defToCar;
 
 function defToCar(normal_def, world, constants){
+  logger.log(logger.LOG_LEVELS.DEBUG, "defToCar: Starting car construction");
   var car_def = createInstance.applyTypes(constants.schema, normal_def)
+  logger.log(logger.LOG_LEVELS.DEBUG, "defToCar: Car def created, wheel count:", car_def.wheel_radius.length);
+  
   var instance = {};
   instance.chassis = createChassis(
     world, car_def.vertex_list, car_def.chassis_density
   );
+  logger.log(logger.LOG_LEVELS.DEBUG, "defToCar: Chassis created");
   var i;
 
   var wheelCount = car_def.wheel_radius.length;
 
   instance.wheels = [];
   for (i = 0; i < wheelCount; i++) {
+    logger.log(logger.LOG_LEVELS.DEBUG, "defToCar: Creating wheel", i);
     instance.wheels[i] = createWheel(
       world,
       car_def.wheel_radius[i],
       car_def.wheel_density[i]
     );
   }
+  logger.log(logger.LOG_LEVELS.DEBUG, "defToCar: All", wheelCount, "wheels created");
 
   var carmass = instance.chassis.GetMass();
   for (i = 0; i < wheelCount; i++) {
@@ -31,10 +38,17 @@ function defToCar(normal_def, world, constants){
   }
 
   var joint_def = new b2RevoluteJointDef();
+  logger.log(logger.LOG_LEVELS.DEBUG, "defToCar: Creating wheel joints");
 
   for (i = 0; i < wheelCount; i++) {
+    logger.log(logger.LOG_LEVELS.DEBUG, "defToCar: Creating joint for wheel", i);
     var torque = carmass * -constants.gravity.y / car_def.wheel_radius[i];
 
+    logger.log(logger.LOG_LEVELS.DEBUG, "defToCar: wheel_vertex[" + i + "] =", car_def.wheel_vertex[i]);
+    if (car_def.wheel_vertex[i] >= instance.chassis.vertex_list.length) {
+      logger.log(logger.LOG_LEVELS.ERROR, "ERROR: wheel_vertex index out of bounds!", car_def.wheel_vertex[i], ">=", instance.chassis.vertex_list.length);
+    }
+    
     var randvertex = instance.chassis.vertex_list[car_def.wheel_vertex[i]];
     joint_def.localAnchorA.Set(randvertex.x, randvertex.y);
     joint_def.localAnchorB.Set(0, 0);
@@ -44,7 +58,9 @@ function defToCar(normal_def, world, constants){
     joint_def.bodyA = instance.chassis;
     joint_def.bodyB = instance.wheels[i];
     world.CreateJoint(joint_def);
+    logger.log(logger.LOG_LEVELS.DEBUG, "defToCar: Joint created for wheel", i);
   }
+  logger.log(logger.LOG_LEVELS.DEBUG, "defToCar: All joints created");
 
   return instance;
 }

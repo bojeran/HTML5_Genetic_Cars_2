@@ -49,7 +49,8 @@ function nextGeneration(previousState, scores, config){
     nextState.score = oldScore;
   }
 
-  console.log(previousState, nextState);
+  // Debug log for simulated annealing
+  // console.log(previousState, nextState);
 
   nextState.generation = [createStructure(config, temp, nextState.curDef)];
 

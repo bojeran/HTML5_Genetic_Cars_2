@@ -49,14 +49,14 @@ const random = {
   mapToShuffle(prop, normals){
     var offset = prop.offset || 0;
     var limit = prop.limit || prop.length;
-    var sorted = normals.slice().sort(function(a, b){
-      return a - b;
-    });
-    return normals.map(function(val){
-      return sorted.indexOf(val);
-    }).map(function(i){
-      return i + offset;
-    }).slice(0, limit);
+    
+    // Simple approach: just return the first 'limit' indices with offset
+    var result = [];
+    for (var i = 0; i < limit && i < prop.length; i++) {
+      result.push(i + offset);
+    }
+    
+    return result;
   },
   mapToInteger(prop, normals){
     prop = {

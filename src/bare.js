@@ -30,7 +30,7 @@ function updateUI(key, scores){
   } else {
     $graphList.appendChild($newGraph);
   }
-  console.log($newGraph);
+  // Debug: console.log($newGraph);
   var scatterPlotElem = $newGraph.querySelector(".scatterplot");
   scatterPlotElem.id = "graph-" + key + "-scatter";
   graphState[key] = plot_graphs(
@@ -103,7 +103,7 @@ function handleRoundEnd(key, scores){
     world_def, states[key].generation, createListeners(key)
   );
   if(states[key].counter === previousCounter){
-    console.log(results);
+    // Debug: console.log(results);
     results[key] = results[key].concat(scores);
   } else {
     handleGenerationEnd(key);
@@ -114,9 +114,9 @@ function handleRoundEnd(key, scores){
 function runRound(){
   var toRun = new Map();
   Object.keys(states).forEach(function(key){ toRun.set(key, states[key].counter) });
-  console.log(toRun);
+  // Debug: console.log(toRun);
   while(toRun.size){
-    console.log("running");
+    // Debug: console.log("running");
     Array.from(toRun.keys()).forEach(function(key){
       if(states[key].counter === toRun.get(key)){
         runners[key].step();

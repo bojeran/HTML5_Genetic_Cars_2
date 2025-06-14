@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8"/>
-  <title>HTML5 Genetic Algorithm 2D Car Thingy - Chrome recommended</title>
+  <title>HTML5 Genetic Cars 2 - Advanced Evolution Simulator</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.20.0/vis.min.css" />
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -50,14 +50,9 @@
   <div class="float-left">
 
     <div id="data">
-      <form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_blank">
-        <input type="hidden" name="cmd" value="_s-xclick">
-        <input type="hidden" name="hosted_button_id" value="X8VB9NDYWQDPE">
-        <input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif" border="0" name="submit"
-               alt="PayPal - The safer, easier way to pay online!">
-        <img alt="" border="0" src="https://www.paypalobjects.com/pt_BR/i/scr/pixel.gif" width="1" height="1">
-      </form>
-      <br/>
+      <div style="margin-bottom: 10px;">
+        <button id="theme-toggle" onclick="toggleTheme()">☀️ Light Mode</button>
+      </div>
 
       <div class="buttons">
         <input id="save-progress" type="button" value="Save Population" />
@@ -168,11 +163,48 @@
             </select>
           </td>
         </tr>
+        <tr>
+          <td>Wheel count:</td>
+          <td>
+            <select id="wheelcount" >
+              <option value="1">1</option>
+              <option value="2" selected="selected">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+            </select>
+          </td>
+        </tr>
+        <tr>
+          <td>Speed:</td>
+          <td>
+            <select id="speed" >
+              <option value="0.25">0.25x (Very Slow)</option>
+              <option value="0.5">0.5x (Slow)</option>
+              <option value="0.75">0.75x (Normal)</option>
+              <option value="1" selected="selected">1x (Fast)</option>
+              <option value="2">2x (Very Fast)</option>
+              <option value="8">8x (Ultra Fast)</option>
+              <option value="16">16x (Maximum)</option>
+            </select>
+          </td>
+        </tr>
+        <tr>
+          <td>Water:</td>
+          <td>
+            <select id="water">
+              <option value="enabled" selected="selected">Enabled</option>
+              <option value="disabled">Disabled</option>
+            </select>
+          </td>
+        </tr>
       </table>
 
       <br>
 
       <input type="button" value="Watch Leader" onclick="cw_setCameraTarget(-1)"/>
+      <input type="button" value="View Leader Genome" onclick="showLeaderGenome()" style="margin-left: 10px;"/>
       <div id="health"></div>
       <div id="cars"></div>
     </div>
@@ -183,10 +215,13 @@
 
 <div id="explanation">
   <h3>But what is it?</h3>
-  <p>The program uses a simple genetic algorithm to evolve random two-wheeled shapes into cars over generations. Loosely
-    based on <a href="http://boxcar2d.com/">BoxCar2D</a>, but
-    written from scratch, only using the same physics engine (<a href="http://box2d.org/">box2d</a>).<br/>
-    seedrandom.js written by <a href="http://davidbau.com/">David Bau</a>. (thanks!)</p>
+  <p>This advanced genetic algorithm simulator evolves random multi-wheeled vehicles through natural selection. 
+    Cars with better performance survive and pass their genes to future generations. This enhanced version features 
+    configurable wheel counts (1-6), water physics challenges, variable simulation speeds, and detailed genetic analysis tools. 
+    Watch as simple shapes evolve into sophisticated vehicles capable of navigating complex terrain and water obstacles.</p>
+  <p>Based on the original <a href="http://boxcar2d.com/">BoxCar2D</a> concept, using 
+    <a href="http://box2d.org/">Box2D</a> physics engine and 
+    <a href="http://davidbau.com/">David Bau's</a> seedrandom.js.</p>
 
 
   <h3>Controls</h3>
@@ -235,6 +270,26 @@
         simulation.
       </td>
     </tr>
+    <tr>
+      <th>Wheel count</th>
+      <td>Configure the number of wheels per car (1-6). Changes take effect in the next generation.</td>
+    </tr>
+    <tr>
+      <th>Speed</th>
+      <td>Control simulation speed from 0.25x (very slow) to 16x (maximum). Useful for detailed observation or fast evolution.</td>
+    </tr>
+    <tr>
+      <th>Water</th>
+      <td>Enable or disable water physics zones. Water adds drag and buoyancy forces, creating additional challenges.</td>
+    </tr>
+    <tr>
+      <th>Dark Mode</th>
+      <td>Toggle between light and dark themes. Theme preference is saved automatically.</td>
+    </tr>
+    <tr>
+      <th>View Genome</th>
+      <td>Analyze the genetic makeup of cars. Compare current leaders with historical top performers.</td>
+    </tr>
   </table>
 
   <h3>Graph</h3>
@@ -259,23 +314,33 @@
   </p>
   <ul>
     <li>Shape (8 genes, 1 per vertex)</li>
-    <li>Wheel size (2 genes, 1 per wheel)</li>
-    <li>Wheel position (2 genes, 1 per wheel)</li>
-    <li>Wheel density (2 genes, 1 per wheel) darker wheels mean denser wheels</li>
+    <li>Wheel size (1-6 genes, depending on wheel count configuration)</li>
+    <li>Wheel position (1-6 genes, 1 per wheel)</li>
+    <li>Wheel density (1-6 genes, 1 per wheel) darker wheels mean denser wheels</li>
     <li>Chassis density (1 gene) darker body means denser chassis</li>
   </ul>
+  <p>
+    <strong>New:</strong> Click "View Genome" buttons to explore car genetics in detail, including visual representation and ancestry tracking.
+  </p>
 
-  <h3>Blurb</h3>
-  <p>This is not as deterministic as it should be, so your best car may not perform as well as it once did. The terrain
-    gets more complex with distance.<br/>
-    I'm not in the mood to deal with checking if all scripts have loaded before running, so refresh the page if things
-    seem whack.</p>
+  <h3>New Features in Version 2</h3>
+  <ul>
+    <li><strong>Water Physics:</strong> Dynamic water zones with realistic drag and buoyancy forces</li>
+    <li><strong>Configurable Wheels:</strong> Choose between 1-6 wheels per car for different evolution strategies</li>
+    <li><strong>Speed Control:</strong> Adjust simulation speed from 0.25x to 16x</li>
+    <li><strong>Dark Mode:</strong> Eye-friendly dark theme with automatic preference saving</li>
+    <li><strong>Genome Viewer:</strong> Deep dive into car genetics with visual representation and comparison tools</li>
+    <li><strong>Enhanced Logging:</strong> Comprehensive debug system for tracking simulation behavior</li>
+  </ul>
+
+  <h3>About</h3>
+  <p>This enhanced version builds upon the original HTML5 Genetic Cars with advanced features for deeper exploration of genetic algorithms. The terrain becomes more complex with distance, and water zones add new evolutionary challenges.</p>
 
   <h3>GitHub</h3>
-  <p>The code is now on a <a href="https://github.com/red42/HTML5_Genetic_Cars">GitHub repository</a>. Feel free to
-    contribute!</p>
+  <p>This is a fork of the original <a href="https://github.com/red42/HTML5_Genetic_Cars">HTML5 Genetic Cars</a>. 
+    The enhanced version is available at <a href="https://github.com/bojeran/HTML5_Genetic_Cars_2">HTML5 Genetic Cars 2</a>.</p>
 
-  <p>Originally written by <a href="http://rednuht.org">this guy</a>, now with contributions from patient people at GitHub.</p>
+  <p>Originally created by <a href="http://rednuht.org">rednuht</a>, enhanced with new features by the community.</p>
 </div>
 
 <div name="minimapmarker" class="minimapmarker"></div>
@@ -283,6 +348,42 @@
 <div name="healthbar" class="healthbar" onclick="cw_setCameraTarget(this.car_index)">
   <div name="health" class="health"></div>
   <div name="healthtext" class="healthtext"></div>
+</div>
+
+<!-- Genome Viewer Modal -->
+<div id="genome-viewer-modal" class="genome-modal" style="display: none;">
+  <div class="genome-modal-content">
+    <div class="genome-modal-header">
+      <h3 id="genome-title">Current Leader Genome</h3>
+      <span class="genome-close" onclick="closeGenomeViewer()">&times;</span>
+    </div>
+    <div class="genome-modal-body">
+      <div id="genome-comparison-toggle" style="margin-bottom: 15px;">
+        <label>
+          <input type="checkbox" id="comparison-mode" onchange="toggleComparisonMode()">
+          Compare with historical car
+        </label>
+        <select id="historical-car-select" style="margin-left: 10px; display: none;">
+          <!-- Options populated dynamically -->
+        </select>
+      </div>
+      
+      <div id="genome-display">
+        <div class="genome-section">
+          <div id="leader-genome" class="genome-column">
+            <h4>Current Leader</h4>
+            <div id="leader-genome-data"></div>
+            <canvas id="leader-car-visualization" width="200" height="150"></canvas>
+          </div>
+          <div id="comparison-genome" class="genome-column" style="display: none;">
+            <h4>Historical Car</h4>
+            <div id="comparison-genome-data"></div>
+            <canvas id="comparison-car-visualization" width="200" height="150"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script src="lib/seedrandom.js"></script>

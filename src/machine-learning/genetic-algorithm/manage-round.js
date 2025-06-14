@@ -27,12 +27,18 @@ function nextGeneration(
   scores,
   config
 ){
+  var logger = require("../../logger/logger.js");
+  logger.log(logger.LOG_LEVELS.DEBUG, "=== NEXT GENERATION STARTING ===");
+  logger.log(logger.LOG_LEVELS.DEBUG, "Schema:", JSON.stringify(config.schema));
+  logger.log(logger.LOG_LEVELS.DEBUG, "Generation size:", config.generationSize);
+  
   var champion_length = config.championLength,
     generationSize = config.generationSize,
     selectFromAllParents = config.selectFromAllParents;
 
   var newGeneration = new Array();
   var newborn;
+  logger.log(logger.LOG_LEVELS.DEBUG, "Adding", champion_length, "champions to new generation");
   for (var k = 0; k < champion_length; k++) {``
     scores[k].def.is_elite = true;
     scores[k].def.index = k;
