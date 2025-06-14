@@ -39,6 +39,11 @@ var screenfps = 60;
 var skipTicks = Math.round(1000 / box2dfps);
 var maxFrameSkip = skipTicks * 2;
 
+// Speed control
+var speedMultiplier = 1.0; // Default to 1x (normal speed)
+var lastFrameTime = 0;
+var frameDelay = 1000 / 60; // Base delay for 60 FPS
+
 var canvas = document.getElementById("mainbox");
 var ctx = canvas.getContext("2d");
 
@@ -328,14 +333,24 @@ function simulationStep() {
   );
 }
 
-function gameLoop() {
+function gameLoop(currentTime) {
+  if (!lastFrameTime) lastFrameTime = currentTime;
+  
+  var deltaTime = currentTime - lastFrameTime;
+  var targetDelay = frameDelay / speedMultiplier;
+  
+  if (deltaTime >= targetDelay) {
   loops = 0;
   while (!cw_paused && (new Date).getTime() > nextGameTick && loops < maxFrameSkip) {   
     nextGameTick += skipTicks;
     loops++;
   }
+    
   simulationStep();
   cw_drawScreen();
+    
+    lastFrameTime = currentTime;
+  }
 
   if(!cw_paused) window.requestAnimationFrame(gameLoop);
 }
@@ -603,6 +618,10 @@ function cw_init() {
       wheelSelect.value = wheelCount;
     }
   }
+  
+  // Speed always starts at default (1x) - no localStorage persistence
+  logger.log(logger.LOG_LEVELS.DEBUG, "Starting with default simulation speed:", speedMultiplier + "x");
+  
   // Check for stored water setting and apply it
   var storedWater = localStorage.getItem('waterEnabled');
   if (storedWater) {
@@ -726,6 +745,12 @@ document.querySelector("#wheelcount").addEventListener("change", function(e){
   var elem = e.target
   cw_setWheelCount(elem.options[elem.selectedIndex].value)
 })
+
+document.querySelector("#speed").addEventListener("change", function(e){
+  var elem = e.target
+  cw_setSpeed(elem.options[elem.selectedIndex].value)
+})
+
 document.querySelector("#water").addEventListener("change", function(e){
   var elem = e.target
   cw_setWater(elem.options[elem.selectedIndex].value)
@@ -755,6 +780,17 @@ function cw_setGravity(choice) {
 function cw_setEliteSize(clones) {
   generationConfig.constants.championLength = parseInt(clones, 10);
 }
+
+function cw_setSpeed(speed) {
+  var newSpeed = parseFloat(speed);
+  logger.log(logger.LOG_LEVELS.DEBUG, "Changing simulation speed to:", newSpeed + "x");
+  
+  speedMultiplier = newSpeed;
+  lastFrameTime = 0; // Reset timing when speed changes
+  
+  logger.log(logger.LOG_LEVELS.DEBUG, "New simulation speed:", speedMultiplier + "x");
+}
+
 function cw_setWater(state) {
   var waterEnabled = (state === "enabled");
   logger.log(logger.LOG_LEVELS.DEBUG, "Changing water setting to:", waterEnabled ? "enabled" : "disabled");
