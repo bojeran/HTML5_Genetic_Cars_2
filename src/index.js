@@ -711,5 +711,41 @@ function cw_setGravity(choice) {
 function cw_setEliteSize(clones) {
   generationConfig.constants.championLength = parseInt(clones, 10);
 }
+// Dark mode functionality
+function toggleTheme() {
+  var currentTheme = document.documentElement.getAttribute('data-theme');
+  var newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  var toggleButton = document.getElementById('theme-toggle');
+  
+  document.documentElement.setAttribute('data-theme', newTheme);
+  
+  if (newTheme === 'dark') {
+    toggleButton.textContent = '☀️ Light Mode';
+    localStorage.setItem('theme', 'dark');
+  } else {
+    toggleButton.textContent = '🌙 Dark Mode';
+    localStorage.setItem('theme', 'light');
+  }
+}
+
+// Initialize theme from localStorage
+function initializeTheme() {
+  var savedTheme = localStorage.getItem('theme') || 'dark'; // Default to dark mode
+  var toggleButton = document.getElementById('theme-toggle');
+  
+  document.documentElement.setAttribute('data-theme', savedTheme);
+  
+  if (savedTheme === 'dark') {
+    toggleButton.textContent = '☀️ Light Mode';
+  } else {
+    toggleButton.textContent = '🌙 Dark Mode';
+  }
+}
+
+// Make functions available globally
+window.toggleTheme = toggleTheme;
 
 cw_init();
+
+// Initialize theme after page load
+document.addEventListener('DOMContentLoaded', initializeTheme);
