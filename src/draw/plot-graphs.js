@@ -34,9 +34,19 @@ module.exports = {
 
 function cw_storeGraphScores(lastState, cw_carScores, generationSize) {
   // Debug: console.log(cw_carScores);
+  
+  // Store the top car's complete data including genome
+  var topCarData = {
+    score: cw_carScores[0].score,
+    def: cw_carScores[0].def,  // Complete car definition with genome
+    timestamp: Date.now()
+  };
+  
   return {
     cw_topScores: (lastState.cw_topScores || [])
     .concat([cw_carScores[0].score]),
+    cw_topCarsWithGenome: (lastState.cw_topCarsWithGenome || [])
+    .concat([topCarData]),
     cw_graphAverage: (lastState.cw_graphAverage || []).concat([
       cw_average(cw_carScores, generationSize)
     ]),
@@ -121,26 +131,75 @@ function cw_clearGraphics(graphcanvas, graphctx, graphwidth, graphheight) {
 
 function cw_listTopScores(elem, state) {
   var cw_topScores = state.cw_topScores;
+  var cw_topCarsWithGenome = state.cw_topCarsWithGenome || [];
   var ts = elem;
   ts.innerHTML = "<b>Top Scores:</b><br />";
-  cw_topScores.sort(function (a, b) {
-    if (a.v > b.v) {
+  
+  // Create pairs of scores and genome data, sorted by score
+  var topScoresWithGenome = [];
+  for (var i = 0; i < cw_topScores.length && i < cw_topCarsWithGenome.length; i++) {
+    topScoresWithGenome.push({
+      score: cw_topScores[i],
+      genome: cw_topCarsWithGenome[i]
+    });
+  }
+  
+  // Sort by score value descending
+  topScoresWithGenome.sort(function (a, b) {
+    if (a.score.v > b.score.v) {
       return -1
     } else {
       return 1
     }
   });
 
-  for (var k = 0; k < Math.min(10, cw_topScores.length); k++) {
-    var topScore = cw_topScores[k];
-    // console.log(topScore);
+  for (var k = 0; k < Math.min(10, topScoresWithGenome.length); k++) {
+    var entry = topScoresWithGenome[k];
+    var topScore = entry.score;
+    var genomeData = entry.genome;
+    
     var n = "#" + (k + 1) + ":";
     var score = Math.round(topScore.v * 100) / 100;
     var distance = "d:" + Math.round(topScore.x * 100) / 100;
     var yrange =  "h:" + Math.round(topScore.y2 * 100) / 100 + "/" + Math.round(topScore.y * 100) / 100 + "m";
-    var gen = "(Gen " + cw_topScores[k].i + ")"
-
-    ts.innerHTML +=  [n, score, distance, yrange, gen].join(" ") + "<br />";
+    var gen = "(Gen " + topScore.i + ")";
+    
+    // Create a row with score info and genome button
+    var rowDiv = document.createElement("div");
+    rowDiv.className = "top-score-row";
+    rowDiv.style.marginBottom = "5px";
+    rowDiv.style.display = "flex";
+    rowDiv.style.alignItems = "center";
+    rowDiv.style.justifyContent = "space-between";
+    
+    var scoreSpan = document.createElement("span");
+    scoreSpan.innerHTML = [n, score, distance, yrange, gen].join(" ");
+    scoreSpan.style.flex = "1";
+    
+    var genomeButton = document.createElement("button");
+    genomeButton.textContent = "View Genome";
+    genomeButton.className = "genome-view-btn";
+    genomeButton.style.marginLeft = "10px";
+    genomeButton.style.padding = "2px 8px";
+    genomeButton.style.fontSize = "12px";
+    genomeButton.setAttribute("data-genome-index", k);
+    
+    // Store genome data for later access
+    genomeButton.genomeData = genomeData;
+    
+    // Add click handler
+    genomeButton.addEventListener("click", function() {
+      if (window.showGenomeView) {
+        window.showGenomeView(this.genomeData);
+      } else {
+        // Fallback if genome viewer not available
+        alert("Genome viewer not yet initialized. Please wait a moment and try again.");
+      }
+    });
+    
+    rowDiv.appendChild(scoreSpan);
+    rowDiv.appendChild(genomeButton);
+    ts.appendChild(rowDiv);
   }
 }
 

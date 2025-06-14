@@ -28,6 +28,8 @@ var ghost_resume = ghost_fns.ghost_resume;
 var ghost_create_replay = ghost_fns.ghost_create_replay;
 
 var cw_Car = require("./draw/draw-car-stats.js");
+var genomeViewer = require("./genome-viewer.js");
+var logger = require("./logger/logger.js");
 var ghost;
 var carMap = new Map();
 
@@ -80,6 +82,13 @@ var leaderPosition = {
   x: 0, y: 0
 }
 
+// Leader genome tracking
+var currentLeaderGenome = {
+  carIndex: -1,
+  genome: null,
+  timestamp: null
+}
+
 minimapcamera.width = 12 * minimapscale + "px";
 minimapcamera.height = 6 * minimapscale + "px";
 
@@ -105,6 +114,7 @@ var world_def = {
 var cw_deadCars;
 var graphState = {
   cw_topScores: [],
+  cw_topCarsWithGenome: [],
   cw_graphAverage: [],
   cw_graphElite: [],
   cw_graphTop: [],
@@ -113,6 +123,7 @@ var graphState = {
 function resetGraphState(){
   graphState = {
     cw_topScores: [],
+    cw_topCarsWithGenome: [],
     cw_graphAverage: [],
     cw_graphElite: [],
     cw_graphTop: [],
@@ -158,6 +169,14 @@ function resetCarUI(){
   leaderPosition = {
     x: 0, y: 0
   };
+  
+  // Reset leader genome tracking
+  currentLeaderGenome = {
+    carIndex: -1,
+    genome: null,
+    timestamp: null
+  };
+  
   document.getElementById("generation").innerHTML = generationState.counter.toString();
   document.getElementById("cars").innerHTML = "";
   document.getElementById("population").innerHTML = generationConfig.constants.generationSize.toString();
@@ -340,14 +359,14 @@ function gameLoop(currentTime) {
   var targetDelay = frameDelay / speedMultiplier;
   
   if (deltaTime >= targetDelay) {
-  loops = 0;
-  while (!cw_paused && (new Date).getTime() > nextGameTick && loops < maxFrameSkip) {   
-    nextGameTick += skipTicks;
-    loops++;
-  }
+    loops = 0;
+    while (!cw_paused && (new Date).getTime() > nextGameTick && loops < maxFrameSkip) {   
+      nextGameTick += skipTicks;
+      loops++;
+    }
     
-  simulationStep();
-  cw_drawScreen();
+    simulationStep();
+    cw_drawScreen();
     
     lastFrameTime = currentTime;
   }
@@ -366,21 +385,54 @@ function updateCarUI(carInfo){
   if (position.x > leaderPosition.x) {
     leaderPosition = position;
     leaderPosition.leader = k;
+    
+    // Update leader genome tracking
+    currentLeaderGenome.carIndex = k;
+    currentLeaderGenome.genome = carInfo.def;
+    currentLeaderGenome.timestamp = Date.now();
+    
+    logger.log(logger.LOG_LEVELS.INFO, "New leader detected - Car #" + k + " genome tracked");
+    
+    // Trigger genome view update if it's open
+    if (window.updateLeaderGenomeView) {
+      window.updateLeaderGenomeView(currentLeaderGenome);
+    }
+    
     // console.log("new leader: ", k);
   }
 }
 
 function cw_findLeader() {
   var lead = 0;
+  var newLeaderIndex = -1;
+  var newLeaderCarInfo = null;
   var cw_carArray = Array.from(carMap.values());
+  
   for (var k = 0; k < cw_carArray.length; k++) {
     if (!cw_carArray[k].alive) {
       continue;
     }
     var position = cw_carArray[k].getPosition();
     if (position.x > lead) {
+      lead = position.x;
       leaderPosition = position;
       leaderPosition.leader = k;
+      newLeaderIndex = k;
+      newLeaderCarInfo = cw_carArray[k].car;
+    }
+  }
+  
+  // Update leader genome if leader changed
+  if (newLeaderIndex !== currentLeaderGenome.carIndex && newLeaderCarInfo) {
+    currentLeaderGenome.carIndex = newLeaderIndex;
+    currentLeaderGenome.genome = newLeaderCarInfo.def;
+    currentLeaderGenome.timestamp = Date.now();
+    
+    logger.log(logger.LOG_LEVELS.INFO, "Leader changed via findLeader - Car #" + newLeaderIndex + " genome tracked");
+    
+    // Trigger genome view update if it's open
+    if (window.updateLeaderGenomeView) {
+      window.updateLeaderGenomeView(currentLeaderGenome);
     }
   }
 }
@@ -513,6 +565,7 @@ function saveProgress() {
   localStorage.cw_genCounter = generationState.counter;
   localStorage.cw_ghost = JSON.stringify(ghost);
   localStorage.cw_topScores = JSON.stringify(graphState.cw_topScores);
+  localStorage.cw_topCarsWithGenome = JSON.stringify(graphState.cw_topCarsWithGenome);
   localStorage.cw_floorSeed = world_def.floorseed;
 }
 
@@ -526,6 +579,14 @@ function restoreProgress() {
   generationState.counter = localStorage.cw_genCounter;
   ghost = JSON.parse(localStorage.cw_ghost);
   graphState.cw_topScores = JSON.parse(localStorage.cw_topScores);
+  
+  // Restore genome data if available (backward compatibility)
+  if (localStorage.cw_topCarsWithGenome) {
+    graphState.cw_topCarsWithGenome = JSON.parse(localStorage.cw_topCarsWithGenome);
+  } else {
+    graphState.cw_topCarsWithGenome = [];
+  }
+  
   world_def.floorseed = localStorage.cw_floorSeed;
   document.getElementById("newseed").value = world_def.floorseed;
 
@@ -663,6 +724,10 @@ function cw_init() {
   currentRunner = worldRun(world_def, generationState.generation, uiListeners);
   setupCarUI();
   cw_drawMiniMap();
+  
+  // Initialize genome viewer
+  genomeViewer.initializeGenomeViewer();
+  
   window.requestAnimationFrame(gameLoop);
   
 }
@@ -823,6 +888,43 @@ function cw_setWheelCount(wheelCount) {
   logger.log(logger.LOG_LEVELS.DEBUG, "Reloading page to apply wheel count change...");
   window.location.reload();
 }
+
+function cw_cleanupAll() {
+  // Clear existing UI elements created by cw_init
+  try {
+    // Clear car-related UI
+    var carsElement = document.getElementById("cars");
+    if (carsElement) {
+      carsElement.innerHTML = "";
+    }
+    
+    // Clear health container (but preserve template)
+    var healthContainer = document.getElementById("health");
+    if (healthContainer) {
+      var healthBars = healthContainer.querySelectorAll('.healthbar:not([name])');
+      for (var i = 0; i < healthBars.length; i++) {
+        healthBars[i].remove();
+      }
+    }
+    
+    // Clear minimap markers (but preserve template)
+    var minimapholder = document.getElementById("minimapholder");
+    if (minimapholder) {
+      var markers = minimapholder.querySelectorAll('[id^="bar"]:not([name])');
+      for (var i = 0; i < markers.length; i++) {
+        markers[i].remove();
+      }
+    }
+    
+    // Reset graphics
+    if (typeof cw_clearGraphics === 'function') {
+      cw_clearGraphics();
+    }
+  } catch (e) {
+    console.error("Cleanup error:", e);
+  }
+}
+
 // Dark mode functionality
 function toggleTheme() {
   var currentTheme = document.documentElement.getAttribute('data-theme');
@@ -856,6 +958,10 @@ function initializeTheme() {
 
 // Make functions available globally
 window.toggleTheme = toggleTheme;
+window.getCurrentLeaderGenome = function() {
+  return currentLeaderGenome;
+};
+window.graphState = graphState;
 
 cw_init();
 

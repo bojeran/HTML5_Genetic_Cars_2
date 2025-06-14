@@ -211,6 +211,7 @@
       <br>
 
       <input type="button" value="Watch Leader" onclick="cw_setCameraTarget(-1)"/>
+      <input type="button" value="View Leader Genome" onclick="showLeaderGenome()" style="margin-left: 10px;"/>
       <div id="health"></div>
       <div id="cars"></div>
     </div>
@@ -321,6 +322,42 @@
 <div name="healthbar" class="healthbar" onclick="cw_setCameraTarget(this.car_index)">
   <div name="health" class="health"></div>
   <div name="healthtext" class="healthtext"></div>
+</div>
+
+<!-- Genome Viewer Modal -->
+<div id="genome-viewer-modal" class="genome-modal" style="display: none;">
+  <div class="genome-modal-content">
+    <div class="genome-modal-header">
+      <h3 id="genome-title">Current Leader Genome</h3>
+      <span class="genome-close" onclick="closeGenomeViewer()">&times;</span>
+    </div>
+    <div class="genome-modal-body">
+      <div id="genome-comparison-toggle" style="margin-bottom: 15px;">
+        <label>
+          <input type="checkbox" id="comparison-mode" onchange="toggleComparisonMode()">
+          Compare with historical car
+        </label>
+        <select id="historical-car-select" style="margin-left: 10px; display: none;">
+          <!-- Options populated dynamically -->
+        </select>
+      </div>
+      
+      <div id="genome-display">
+        <div class="genome-section">
+          <div id="leader-genome" class="genome-column">
+            <h4>Current Leader</h4>
+            <div id="leader-genome-data"></div>
+            <canvas id="leader-car-visualization" width="200" height="150"></canvas>
+          </div>
+          <div id="comparison-genome" class="genome-column" style="display: none;">
+            <h4>Historical Car</h4>
+            <div id="comparison-genome-data"></div>
+            <canvas id="comparison-car-visualization" width="200" height="150"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script src="lib/seedrandom.js"></script>
