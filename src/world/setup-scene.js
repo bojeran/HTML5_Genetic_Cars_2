@@ -10,7 +10,8 @@ world_def = {
   floorseed: string,
   tileDimensions,
   maxFloorTiles,
-  mutable_floor: boolean
+  mutable_floor: boolean,
+  waterEnabled: boolean
 }
 
 */
@@ -27,7 +28,8 @@ module.exports = function(world_def){
     world_def.floorseed,
     world_def.tileDimensions,
     world_def.maxFloorTiles,
-    world_def.mutable_floor
+    world_def.mutable_floor,
+    world_def.waterEnabled
   );
 
   var last_tile = floorData.floorTiles[
@@ -46,7 +48,7 @@ module.exports = function(world_def){
   };
 }
 
-function cw_createFloor(world, floorseed, dimensions, maxFloorTiles, mutable_floor) {
+function cw_createFloor(world, floorseed, dimensions, maxFloorTiles, mutable_floor, waterEnabled) {
   var last_tile = null;
   var tile_position = new b2Vec2(-5, 0);
   var cw_floorTiles = [];
@@ -61,7 +63,7 @@ function cw_createFloor(world, floorseed, dimensions, maxFloorTiles, mutable_flo
   while (k < maxFloorTiles) {
     // Check if we should create water here
     var createWater = false;
-    if (k > 10 && k < maxFloorTiles - 20) { // Don't put water too early or late
+    if (waterEnabled && k > 10 && k < maxFloorTiles - 20) { // Don't put water too early or late
       if (k - lastWaterIndex >= minDistanceBetweenWater) {
         createWater = Math.random() < waterProbability;
       }

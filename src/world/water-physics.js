@@ -173,7 +173,7 @@ function registerCarPartInWater(carId, partName, waterUserData) {
   
   // Only register car in water if it wasn't already
   if (!carsInWater.has(carId)) {
-    logger.log(logger.LOG_LEVELS.INFO, "Car", carId, "registered in water");
+    logger.log(logger.LOG_LEVELS.DEBUG, "Car", carId, "registered in water");
     carsInWater.set(carId, waterUserData);
   }
   
@@ -193,7 +193,7 @@ function unregisterCarPartFromWater(carId, partName) {
   
   // IMMEDIATE CLEANUP: Remove car from water tracking immediately when any major part exits
   if (partName === "chassis" || parts.size === 0) {
-    logger.log(logger.LOG_LEVELS.INFO, "Car", carId, "exiting water (chassis or all parts out) - immediate cleanup");
+    logger.log(logger.LOG_LEVELS.DEBUG, "Car", carId, "exiting water (chassis or all parts out) - immediate cleanup");
     
     // Immediate removal from all tracking
     carsInWater.delete(carId);
@@ -203,7 +203,7 @@ function unregisterCarPartFromWater(carId, partName) {
     // CRITICAL: Immediately clear forces and reset velocity
     clearCarForces(carId);
     
-    logger.log(logger.LOG_LEVELS.INFO, "Car", carId, "completely removed from water tracking");
+    logger.log(logger.LOG_LEVELS.DEBUG, "Car", carId, "completely removed from water tracking");
   }
 }
 
@@ -234,7 +234,7 @@ function clearCarForces(carId) {
         // Only reset to zero if floating up, otherwise let gravity work
         if (velocity.y > 0) {
           carRef.chassis.SetLinearVelocity(new b2Vec2(velocity.x, 0));
-          logger.log(logger.LOG_LEVELS.INFO, "Car", carId, "upward velocity reset to 0 on exit");
+          logger.log(logger.LOG_LEVELS.DEBUG, "Car", carId, "upward velocity reset to 0 on exit");
         }
         carRef.chassis.SetAngularVelocity(0);
       }
@@ -258,7 +258,7 @@ function clearCarForces(carId) {
         carExitForces.delete(carId);
       }
       
-      logger.log(logger.LOG_LEVELS.INFO, "Car", carId, "water exit - velocity normalized");
+      logger.log(logger.LOG_LEVELS.DEBUG, "Car", carId, "water exit - velocity normalized");
     } catch (e) {
       logger.log(logger.LOG_LEVELS.ERROR, "Error clearing forces for car", carId, ":", e);
     }
@@ -288,5 +288,5 @@ module.exports.clearWaterZones = function() {
   carsJustExited.clear();
   waterPhysicsEnabled = true;
   errorCount = 0;
-  logger.log(logger.LOG_LEVELS.INFO, "Water zones cleared, physics re-enabled");
+  logger.log(logger.LOG_LEVELS.DEBUG, "Water zones cleared, physics re-enabled");
 };

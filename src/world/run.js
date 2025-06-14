@@ -9,7 +9,7 @@ module.exports = runDefs;
 function runDefs(world_def, defs, listeners) {
   // Initialize debug logger
   logger.init(logger.LOG_LEVELS.INFO);
-  logger.log(logger.LOG_LEVELS.INFO, "Starting world with", defs.length, "cars");
+  logger.log(logger.LOG_LEVELS.DEBUG, "Starting world with", defs.length, "cars");
   
   if (world_def.mutable_floor) {
     // GHOST DISABLED
@@ -17,24 +17,72 @@ function runDefs(world_def, defs, listeners) {
   }
 
   var scene = setupScene(world_def);
-  scene.world.Step(1 / world_def.box2dfps, 20, 20);
-  logger.log(logger.LOG_LEVELS.INFO, "about to build cars");
+  scene.world.Step(1 / world_def.box2dfps, 15, 15);
+  logger.log(logger.LOG_LEVELS.DEBUG, "about to build cars");
+  
+  // Log wheel count from first car definition
+  if (defs.length > 0 && defs[0].wheel_radius) {
+    logger.log(logger.LOG_LEVELS.DEBUG, "Building generation with", defs[0].wheel_radius.length, "wheels per car");
+  }
+  
   var cars = defs.map((def, i) => {
-    return {
-      index: i,
-      def: def,
-      car: defToCar(def, scene.world, world_def),
-      state: carRun.getInitialState(world_def)
-    };
+    logger.log(logger.LOG_LEVELS.DEBUG, "Building car", i, "with", def.wheel_radius ? def.wheel_radius.length : "unknown", "wheels");
+    try {
+      var carObj = defToCar(def, scene.world, world_def);
+      logger.log(logger.LOG_LEVELS.DEBUG, "Car", i, "built successfully");
+      return {
+        index: i,
+        def: def,
+        car: carObj,
+        state: carRun.getInitialState(world_def)
+      };
+    } catch (e) {
+      logger.log(logger.LOG_LEVELS.ERROR, "Error building car", i, ":", e.message);
+      throw e;
+    }
   });
+  logger.log(logger.LOG_LEVELS.DEBUG, "All cars built successfully");
   var alivecars = cars;
+  
+  // Function to find car info from body (handles dynamic wheel counts)
+  function findCarFromBody(carBody) {
+    for (var i = 0; i < cars.length; i++) {
+      var car = cars[i];
+      if (!car || !car.car) continue;
+      
+      // Check if it's the chassis
+      if (car.car.chassis === carBody) {
+        return {carIndex: car.index, type: 'chassis'};
+      }
+      
+      // Check if it's one of the wheels
+      for (var w = 0; w < car.car.wheels.length; w++) {
+        if (car.car.wheels[w] === carBody) {
+          return {carIndex: car.index, type: 'wheel', wheelIndex: w};
+        }
+      }
+    }
+    return null;
+  }
   
   // Set up collision listener for water
   var collisionCount = 0;
-  var maxCollisionsPerFrame = 1000; // Safety limit
+  var maxCollisionsPerFrame = 10000; // Safety limit - further increased for 3+ wheels
   
   var listener = {
     BeginContact: function(contact) {
+      var fixtureA = contact.GetFixtureA();
+      var fixtureB = contact.GetFixtureB();
+      
+      // Early exit if neither fixture is water
+      var userDataA = fixtureA.GetUserData();
+      var userDataB = fixtureB.GetUserData();
+      
+      if ((!userDataA || userDataA.type !== "water") && 
+          (!userDataB || userDataB.type !== "water")) {
+        return; // Not a water collision, ignore it
+      }
+      
       logger.incrementCollisionEvents();
       collisionCount++;
       
@@ -43,9 +91,6 @@ function runDefs(world_def, defs, listeners) {
         logger.log(logger.LOG_LEVELS.ERROR, "Too many collisions per frame! Ignoring collision", collisionCount);
         return;
       }
-      
-      var fixtureA = contact.GetFixtureA();
-      var fixtureB = contact.GetFixtureB();
       
       var waterFixture = null;
       var carFixture = null;
@@ -61,43 +106,37 @@ function runDefs(world_def, defs, listeners) {
       if (waterFixture && carFixture) {
         logger.log(logger.LOG_LEVELS.DEBUG, "Water collision detected");
         
-        // Find which car this fixture belongs to
+        // Use dynamic lookup to handle changing wheel counts
         var carBody = carFixture.GetBody();
-        var foundCar = false;
+        var carInfo = findCarFromBody(carBody);
         
-        for (var i = 0; i < cars.length && !foundCar; i++) {
-          var car = cars[i];
-          if (!car || !car.car) continue;
-          
-          // Check if it's the chassis
-          if (car.car.chassis === carBody) {
-            logger.log(logger.LOG_LEVELS.INFO, "Car", car.index, "chassis entered water");
-            waterPhysics.registerCarPartInWater(car.index, "chassis", waterFixture.GetUserData());
-            foundCar = true;
-            break;
+        if (carInfo) {
+          if (carInfo.type === 'chassis') {
+            logger.log(logger.LOG_LEVELS.DEBUG, "Car", carInfo.carIndex, "chassis entered water");
+            waterPhysics.registerCarPartInWater(carInfo.carIndex, "chassis", waterFixture.GetUserData());
+          } else if (carInfo.type === 'wheel') {
+            logger.log(logger.LOG_LEVELS.DEBUG, "Car", carInfo.carIndex, "wheel", carInfo.wheelIndex, "entered water");
+            waterPhysics.registerCarPartInWater(carInfo.carIndex, "wheel" + carInfo.wheelIndex, waterFixture.GetUserData());
           }
-          
-          // Check if it's one of the wheels
-          for (var w = 0; w < car.car.wheels.length; w++) {
-            if (car.car.wheels[w] === carBody) {
-              logger.log(logger.LOG_LEVELS.DEBUG, "Car", car.index, "wheel", w, "entered water");
-              waterPhysics.registerCarPartInWater(car.index, "wheel" + w, waterFixture.GetUserData());
-              foundCar = true;
-              break;
-            }
-          }
-        }
-        
-        if (!foundCar) {
-          logger.log(logger.LOG_LEVELS.WARN, "Water collision but couldn't find car for body");
+        } else {
+          logger.log(logger.LOG_LEVELS.DEBUG, "Water collision but couldn't find car for body");
         }
       }
     },
     EndContact: function(contact) {
-      logger.incrementCollisionEvents();
-      
       var fixtureA = contact.GetFixtureA();
       var fixtureB = contact.GetFixtureB();
+      
+      // Early exit if neither fixture is water
+      var userDataA = fixtureA.GetUserData();
+      var userDataB = fixtureB.GetUserData();
+      
+      if ((!userDataA || userDataA.type !== "water") && 
+          (!userDataB || userDataB.type !== "water")) {
+        return; // Not a water collision, ignore it
+      }
+      
+      logger.incrementCollisionEvents();
       
       var waterFixture = null;
       var carFixture = null;
@@ -113,31 +152,20 @@ function runDefs(world_def, defs, listeners) {
       if (waterFixture && carFixture) {
         logger.log(logger.LOG_LEVELS.DEBUG, "Water exit detected");
         
-        // Find which car this fixture belongs to
+        // Use dynamic lookup to handle changing wheel counts
         var carBody = carFixture.GetBody();
-        var foundCar = false;
+        var carInfo = findCarFromBody(carBody);
         
-        for (var i = 0; i < cars.length && !foundCar; i++) {
-          var car = cars[i];
-          if (!car || !car.car) continue;
-          
-          // Check if it's the chassis
-          if (car.car.chassis === carBody) {
-            logger.log(logger.LOG_LEVELS.DEBUG, "Car", car.index, "chassis exited water");
-            waterPhysics.unregisterCarPartFromWater(car.index, "chassis");
-            foundCar = true;
-            break;
+        if (carInfo) {
+          if (carInfo.type === 'chassis') {
+            logger.log(logger.LOG_LEVELS.DEBUG, "Car", carInfo.carIndex, "chassis exited water");
+            waterPhysics.unregisterCarPartFromWater(carInfo.carIndex, "chassis");
+          } else if (carInfo.type === 'wheel') {
+            logger.log(logger.LOG_LEVELS.DEBUG, "Car", carInfo.carIndex, "wheel", carInfo.wheelIndex, "exited water");
+            waterPhysics.unregisterCarPartFromWater(carInfo.carIndex, "wheel" + carInfo.wheelIndex);
           }
-          
-          // Check if it's one of the wheels
-          for (var w = 0; w < car.car.wheels.length; w++) {
-            if (car.car.wheels[w] === carBody) {
-              logger.log(logger.LOG_LEVELS.DEBUG, "Car", car.index, "wheel", w, "exited water");
-              waterPhysics.unregisterCarPartFromWater(car.index, "wheel" + w);
-              foundCar = true;
-              break;
-            }
-          }
+        } else {
+          logger.log(logger.LOG_LEVELS.DEBUG, "Water exit but couldn't find car for body");
         }
       }
     },
@@ -189,7 +217,7 @@ function runDefs(world_def, defs, listeners) {
       logger.timeEnd("water-physics");
       
       logger.time("physics-step");
-      scene.world.Step(1 / world_def.box2dfps, 20, 20);
+      scene.world.Step(1 / world_def.box2dfps, 15, 15);
       logger.timeEnd("physics-step");
       
       listeners.preCarStep();
@@ -201,7 +229,7 @@ function runDefs(world_def, defs, listeners) {
         if (car.car.chassis && car.car.chassis.IsActive()) {
           var velocity = car.car.chassis.GetLinearVelocity();
           if (velocity && velocity.y > 1.2) {
-            logger.log(logger.LOG_LEVELS.WARN, "GLOBAL: Car", car.index, "flying with velocity", velocity.y.toFixed(2), "- aggressive reset");
+            // logger.log(logger.LOG_LEVELS.WARN, "GLOBAL: Car", car.index, "flying with velocity", velocity.y.toFixed(2), "- aggressive reset");
             
             // AGGRESSIVE RESET: Set downward velocity to break force equilibrium
             car.car.chassis.SetLinearVelocity(new b2Vec2(velocity.x, -0.5));
