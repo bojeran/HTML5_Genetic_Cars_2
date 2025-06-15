@@ -7,8 +7,7 @@ var logger = require("../logger/logger");
 
 module.exports = runDefs;
 function runDefs(world_def, defs, listeners) {
-  // Initialize debug logger
-  logger.init(logger.LOG_LEVELS.INFO);
+  // Debug logging (level set by entry point)
   logger.log(logger.LOG_LEVELS.DEBUG, "Starting world with", defs.length, "cars");
   
   if (world_def.mutable_floor) {

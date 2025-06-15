@@ -4,6 +4,7 @@ var logger = {
   time: time,
   timeEnd: timeEnd,
   setLevel: setLevel,
+  setInitialLevel: setInitialLevel,
   frameStart: frameStart,
   frameEnd: frameEnd,
   getStats: getStats,
@@ -106,6 +107,10 @@ function timeEnd(label) {
 function setLevel(level) {
   currentLevel = level;
   log(LOG_LEVELS.INFO, "Debug level changed to:", Object.keys(LOG_LEVELS)[level]);
+}
+
+function setInitialLevel(level) {
+  currentLevel = level;
 }
 
 function frameStart() {
