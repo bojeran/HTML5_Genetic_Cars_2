@@ -1,0 +1,117 @@
+#!/bin/sh
+set -e
+
+PORT=8000
+PIDFILE="$HOME/.genetic-cars-daemon.pid"
+LOGFILE="$HOME/.genetic-cars-daemon.log"
+
+case "${1:-start}" in
+  start)
+    # Check if already running
+    if [ -f "$PIDFILE" ]; then
+      PID=$(cat "$PIDFILE")
+      if kill -0 "$PID" 2>/dev/null; then
+        echo "Genetic Cars daemon already running (PID: $PID)"
+        echo "Server should be available at http://localhost:$PORT"
+        exit 0
+      else
+        # Stale PID file, remove it
+        rm -f "$PIDFILE"
+      fi
+    fi
+    
+    # Check if port is already in use by another process
+    if command -v lsof >/dev/null 2>&1; then
+      if lsof -ti tcp:$PORT >/dev/null 2>&1; then
+        echo "Port $PORT is already in use by another process"
+        echo "Server might already be running at http://localhost:$PORT"
+        exit 1
+      fi
+    elif command -v netstat >/dev/null 2>&1; then
+      if netstat -ln 2>/dev/null | grep -q ":$PORT "; then
+        echo "Port $PORT is already in use by another process"
+        echo "Server might already be running at http://localhost:$PORT"
+        exit 1
+      fi
+    fi
+    
+    echo "Starting Genetic Cars daemon on port $PORT..."
+    cd @out@/srv/genetic-cars
+    
+    # Start server in background (daemon never opens browser)
+    @nodejs@/bin/npx http-server -p $PORT > "$LOGFILE" 2>&1 &
+    PID=$!
+    echo $PID > "$PIDFILE"
+    
+    # Wait a moment to ensure it started successfully
+    sleep 2
+    if kill -0 $PID 2>/dev/null; then
+      echo "Genetic Cars daemon started successfully (PID: $PID)"
+      echo "Server available at http://localhost:$PORT"
+      echo "Logs: $LOGFILE"
+    else
+      rm -f "$PIDFILE"
+      echo "Failed to start daemon. Check log: $LOGFILE"
+      exit 1
+    fi
+    ;;
+    
+  stop)
+    if [ -f "$PIDFILE" ]; then
+      PID=$(cat "$PIDFILE")
+      if kill -0 "$PID" 2>/dev/null; then
+        echo "Stopping Genetic Cars daemon (PID: $PID)..."
+        kill "$PID"
+        rm -f "$PIDFILE"
+        echo "Daemon stopped"
+      else
+        echo "Daemon not running (stale PID file removed)"
+        rm -f "$PIDFILE"
+      fi
+    else
+      echo "Daemon not running (no PID file found)"
+    fi
+    ;;
+    
+  status)
+    if [ -f "$PIDFILE" ]; then
+      PID=$(cat "$PIDFILE")
+      if kill -0 "$PID" 2>/dev/null; then
+        echo "Genetic Cars daemon running (PID: $PID)"
+        echo "Server available at http://localhost:$PORT"
+      else
+        echo "Daemon not running (stale PID file found)"
+        rm -f "$PIDFILE"
+        exit 1
+      fi
+    else
+      echo "Daemon not running"
+      exit 1
+    fi
+    ;;
+    
+  restart)
+    "$0" stop
+    sleep 1
+    "$0" start
+    ;;
+    
+  logs)
+    if [ -f "$LOGFILE" ]; then
+      tail -f "$LOGFILE"
+    else
+      echo "No log file found at $LOGFILE"
+      exit 1
+    fi
+    ;;
+    
+  *)
+    echo "Usage: $0 {start|stop|status|restart|logs}"
+    echo "  start   - Start the daemon (default action)"
+    echo "  stop    - Stop the daemon"
+    echo "  status  - Check daemon status"
+    echo "  restart - Restart the daemon"
+    echo "  logs    - Follow daemon logs"
+    exit 1
+    ;;
+esac

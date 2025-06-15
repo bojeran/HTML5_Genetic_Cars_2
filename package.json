@@ -12,7 +12,10 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "npm run build-main && npm run build-graph",
     "build-main": "browserify --debug ./src/index.js -o ./bundle.js",
-    "build-graph": "browserify --debug ./src/bare.js -o ./bundle-bare.js"
+    "build-graph": "browserify --debug ./src/bare.js -o ./bundle-bare.js",
+    "build-debug": "npm run build-main-debug && npm run build-graph-debug",
+    "build-main-debug": "browserify --debug ./src/index-debug.js -o ./bundle-debug.js",
+    "build-graph-debug": "browserify --debug ./src/bare-debug.js -o ./bundle-bare-debug.js"
   },
   "repository": {
     "type": "git",

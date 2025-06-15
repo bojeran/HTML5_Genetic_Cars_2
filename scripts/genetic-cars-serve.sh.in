@@ -1,0 +1,3 @@
+#!/bin/sh
+cd @out@/srv/genetic-cars
+exec @nodejs@/bin/npx http-server -p 8000@openBrowser@ "$@"
